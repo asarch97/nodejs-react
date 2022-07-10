@@ -10,5 +10,4 @@ COPY backend/package*.json ./backend/
 RUN cd backend && npm install
 COPY backend/index.js ./backend/
 
-EXPOSE 3080
 CMD ["node", "./backend/index.js"]
