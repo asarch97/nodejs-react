@@ -1,4 +1,4 @@
-FROM node:18-apline AS frontend-build
+FROM node:18-alpine AS frontend-build
 WORKDIR /usr/src/app
 COPY frontend/ ./frontend/
 RUN cd frontend && npm install && npm run build
