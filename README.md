@@ -5,7 +5,7 @@ the requests.
 
 For simplicity, one VPC was used without any subnetting. Both services are publicly accesible.
 
-The final url for the service:
+The final url to see it in action:
 http://reactlb-2088109173.us-east-1.elb.amazonaws.com
 
 
