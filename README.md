@@ -8,7 +8,7 @@ For simplicity, one VPC was used without any subnetting. Both services are publi
 The final url for the service:
 http://reactlb-2088109173.us-east-1.elb.amazonaws.com
 
-The githun repository:
+The github repository:
 https://github.com/asarch97/devops-code-challenge
 
 See the detailed_instructions for the complete set of steps. Did not put them here because this file requires formatting.
