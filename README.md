@@ -1,4 +1,14 @@
 
+The deployment consisted of two services with dockers, one for nodejs and one for react. Two load balancers
+were deployed to send the requests to the services. The dns names for the load balancers were used for routing
+the requests.
+
+For simplicity, one VPC was used without any subnetting. Both services are publicly accesible.
+
+The final url for the service:
+http://reactlb-2088109173.us-east-1.elb.amazonaws.com
+
+
 The building and testing process was run on EC2
 
 sudo su
@@ -8,7 +18,7 @@ chown -R ubuntu /usr/src/app
 
 download a zip from github, extract and copy files.
 
-install docker
+Install docker
 ---------------
 apt-get update
 apt-get install ca-certificates curl gnupg lsb-release
@@ -31,7 +41,7 @@ verify
 sudo docker run hello-world
 
 
-install npm
+Install npm
 -----------
 apt install npm
 a screen comes up showing services using the old libraries
@@ -41,7 +51,7 @@ for testing purposes
 open ports 8080 and 3000 on the ec2
 
 
-build the docker images
+Build the docker images
 -----------------------
 cd /usr/src/app/backend
 docker build -t node-image .
@@ -49,66 +59,294 @@ docker build -t node-image .
 cd /usr/src/app/frontend
 docker build -t dock-image .
 
+test on ec2
+-----------
+docker-compose up -d
+docker-compose down
+
+note: for the communication to work, had to change the localhost settings in config files to the dns name for ec2.
 
 
+register the images on AWS
+--------------------------
+services -> Elastic Container registry
+
+create repository
+visibility: private
+name: docker-repo
+
+uri of the repository
+880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo
 
 
-# Overview
-This repository contains a React frontend, and an Express backend that the frontend connects to.
+create repository
+visibility: private
+name: noderepo
 
-# Objective
-Deploy the frontend and backend to somewhere publicly accessible over the internet. The AWS Free Tier should be more than sufficient to run this project, but you may use any platform and tooling you'd like for your solution.
+uri of the repository
+880651758906.dkr.ecr.us-east-1.amazonaws.com/noderepo
 
-Fork this repo as a base. You may change any code in this repository to suit the infrastructure you build in this code challenge.
 
-# Submission
-1. A github repo that has been forked from this repo with all your code.
-2. Modify this README file with instructions for:
-* Any tools needed to deploy your infrastructure
-* All the steps needed to repeat your deployment process
-* URLs to the your deployed frontend.
+login
+-----
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 880651758906.dkr.ecr.us-east-1.amazonaws.com
 
-# Evaluation
-You will be evaluated on the ease to replicate your infrastructure. This is a combination of quality of the instructions, as well as any scripts to automate the overall setup process.
+tag and push the images
+-----------------------
+docker tag dock-image 880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo
+docker push 880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo
 
-# Setup your environment
-Install nodejs. Binaries and installers can be found on nodejs.org.
-https://nodejs.org/en/download/
+docker tag node-image 880651758906.dkr.ecr.us-east-1.amazonaws.com/noderepo
+docker push 880651758906.dkr.ecr.us-east-1.amazonaws.com/noderepo
 
-For macOS or Linux, Nodejs can usually be found in your preferred package manager.
-https://nodejs.org/en/download/package-manager/
+find the docker image uri
+-------------------------
+in ECR
+click on the repository name
+it will show the docker images
+copy uri for the latest image
 
-Depending on the Linux distribution, the Node Package Manager `npm` may need to be installed separately.
+880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo:latest
+880651758906.dkr.ecr.us-east-1.amazonaws.com/noderepo:latest
 
-# Running the project
-The backend and the frontend will need to run on separate processes. The backend should be started first.
-```
-cd backend
-npm ci
-npm start
-```
-The backend should response to a GET request on `localhost:8080`.
+create a role for running containers
+------------------------------------
+in IAM
 
-With the backend started, the frontend can be started.
-```
-cd frontend
-npm ci
-npm start
-```
-The frontend can be accessed at `localhost:3000`. If the frontend successfully connects to the backend, a message saying "SUCCESS" followed by a guid should be displayed on the screen.  If the connection failed, an error message will be displayed on the screen.
+new role
+aws service
+use cases for other aws services
+select elastic container service
+elastic container service task
+role name: ecs_role
 
-# Configuration
-The frontend has a configuration file at `frontend/src/config.js` that defines the URL to call the backend. This URL is used on `frontend/src/App.js#12`, where the front end will make the GET call during the initial load of the page.
+gave following permissions:
+AmazonEC2ContainerRegistryFullAccess	
+AmazonECS_FullAccess
+AmazonECSTaskExecutionRolePolicy
 
-The backend has a configuration file at `backend/config.js` that defines the host that the frontend will be calling from. This URL is used in the `Access-Control-Allow-Origin` CORS header, read in `backend/index.js#14`
 
-# Optional Extras
-The core requirement for this challenge is to get the provided application up and running for consumption over the public internet. That being said, there are some opportunities in this code challenge to demonstrate your skill sets that are above and beyond the core requirement.
+security groups
+---------------
+node-sg security group opens the ports 80 and 8080.
+task1:-1524 security group opens the ports 80 and 3000.
 
-A few examples of extras for this coding challenge:
-1. Dockerizing the application
-2. Scripts to set up the infrastructure
-3. Providing a pipeline for the application deployment
-4. Running the application in a serverless environment
 
-This is not an exhaustive list of extra features that could be added to this code challenge. At the end of the day, this section is for you to demonstrate any skills you want to show that’s not captured in the core requirement.
+setup cluster
+-------------
+in ECS
+
+create cluster
+cluster template: networking only
+name: ecs-clust
+do not create vpc
+
+create tasks
+------------
+create a new task definition
+launch type compatibility: fargate
+task definition name: task1
+task role: none
+network mode: awsvpc
+operating system family: linux
+Task execution IAM role - select ecs_role
+task memory and task cpu: pick the lowest levels
+container definitions: 
+  add container
+  container name: cont1
+  image: 880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo:latest
+  port mapping: 3000
+  add
+skip the mesh and other settings
+create
+
+
+create a new task definition
+launch type compatibility: fargate
+task definition name: nodetask
+task role: none
+network mode: awsvpc
+operating system family: linux
+Task execution IAM role - select ecs_role
+task memory and task cpu: pick the lowest levels
+container definitions: 
+  add container
+  container name: node-cont
+  image: 880651758906.dkr.ecr.us-east-1.amazonaws.com/noderepo:latest
+  port mapping: 8080
+  add
+skip the mesh and other settings
+create
+
+
+create services
+----------------
+click the cluster name
+in the services tab
+create service
+
+launch type: fargate
+operating system family: linux
+task definition: select task1
+revision: latest
+platform version: latest  (this is the fargate version)
+cluster: ecs-clust
+service name: reactdock
+service type: replica is the only option
+number of tasks: 1
+minimum healthy percent: 0   (to force redeployment for cicd, to be changed after testing)
+maximum percent: 200
+deployment circuit breaker: disabled
+deployment type: rolling update
+enable ecs managed tags is enabled - leave it that way
+propogate tags from: do not propagate
+cluster vpc: select the one with 172..
+subnets: us east 1 a
+security group: edit
+  select existing security group
+  task1:-1524
+auto assign public ip: enabled
+health check grace period:   100000 (seconds, only turns on after selecting a load balancer type)
+load balancer type: application
+service IAm role - created automatically with AWSServiceRoleForECS permission
+since we dont have an existing load balancer, create one using the link and come back
+choose reactlb
+container to load balance
+  shows cont1:3000:3000
+  click the button add to load balancer
+    production listener port: 80:http
+    target group name: reactgp
+service auto scaling: do not adjust the service's desirec count is selected
+create service
+view service
+tasks will show here. we have a running task already
+
+load balancer
+click create under application load balancer
+name: reactlb
+internet facing
+ip address type: ipv4
+vpc: it lists the 172.. one
+availability zones
+us-east-1a  (subnet automatically picked up)
+us-east-1b  (subnet automatically picked up)
+security group: select task1:-1524   (take out the default one)
+listener http:80
+forward to:  need to create the target group
+  create target group and come back
+  select reactgp 
+create load balancer
+
+target group
+type: ip addresses
+target group name: reactgp
+http:80
+address type: ipv4
+vpc: it lists the 172.. one
+protocol version: http1
+register targets
+  network: it lists the 172.. one
+  ipv4 addresses: it shows 172.31.0.  without the last part. leave as is
+  ports: 80
+ip targets will be added dynamically when they are created, so no selection here
+create target group
+
+
+create one more service for the node backend
+
+launch type: fargate
+operating system family: linux
+task definition: select nodetask
+revision: latest
+platform version: latest  (this is the fargate version)
+cluster: ecs-clust
+service name: nodedock
+service type: replica is the only option
+number of tasks: 1
+minimum healthy percent: 0   (to force redeployment for cicd, to be changed after testing)
+maximum percent: 200
+deployment circuit breaker: disabled
+deployment type: rolling update
+enable ecs managed tags is enabled - leave it that way
+propogate tags from: do not propagate
+cluster vpc: select the one with 172..
+subnets: us east 1 a
+security group: edit
+  select create new security group
+  node-sg
+  add a custom tcp rule for 8080
+  save
+auto assign public ip: enabled
+health check grace period:   100000 (seconds, only turns on after selecting a load balancer type)
+load balancer type: application
+service IAm role - created automatically with AWSServiceRoleForECS permission
+since we dont have an existing load balancer, create one using the link and come back
+choose nodelb
+container to load balance
+  shows node-cont:8080:8080
+  click the button add to load balancer
+    production listener port: 80:http
+    target group name: nodegp
+service auto scaling: do not adjust the service's desirec count is selected
+create service
+view service
+tasks will show here. we have a running task already
+
+
+load balancer
+click create under application load balancer
+name: nodelb
+internet facing
+ip address type: ipv4
+vpc: it lists the 172.. one
+availability zones
+us-east-1a  (subnet automatically picked up)
+us-east-1b  (subnet automatically picked up)
+security group: select node-sg   (take out the default one)
+listener http:80
+forward to:  need to create the target group
+  create target group and come back
+  select nodegp 
+create load balancer
+
+target group
+type: ip addresses
+target group name: nodegp
+http:80
+address type: ipv4
+vpc: it lists the 172.. one
+protocol version: http1
+register targets
+  network: it lists the 172.. one
+  ipv4 addresses: it shows 172.31.0.  without the last part. leave as is
+  ports: 80
+ip targets will be added dynamically when they are created, so no selection here
+create target group
+
+
+get the dns names for the load balancers
+
+reactlb-2088109173.us-east-1.elb.amazonaws.com
+nodelb-2016202280.us-east-1.elb.amazonaws.com
+
+
+change the two config files:
+
+backend/config.js 
+    CORS_ORIGIN: 'http://reactlb-2088109173.us-east-1.elb.amazonaws.com'
+
+frontend/src/config.js
+export const API_URL = 'http://nodelb-2016202280.us-east-1.elb.amazonaws.com'
+
+
+rebuild and redploy the images
+in the cluster
+go under the tasks tab
+stop the two running tasks
+the services will autimatically provision new tasks.
+
+once the tasks are running, try the following url:
+
+http://reactlb-2088109173.us-east-1.elb.amazonaws.com
+
+
