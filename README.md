@@ -1,3 +1,58 @@
+
+The building and testing process was run on EC2
+
+sudo su
+cd /
+mkdir -p usr/src/app
+chown -R ubuntu /usr/src/app
+
+download a zip from github, extract and copy files.
+
+install docker
+---------------
+apt-get update
+apt-get install ca-certificates curl gnupg lsb-release
+
+Add Docker’s official GPG key:
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+set up the repository
+ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+apt-get install docker-compose-plugin
+apt-get install docker-compose
+
+verify
+sudo docker run hello-world
+
+
+install npm
+-----------
+apt install npm
+a screen comes up showing services using the old libraries
+go ahead and restart them
+
+for testing purposes
+open ports 8080 and 3000 on the ec2
+
+
+build the docker images
+-----------------------
+cd /usr/src/app/backend
+docker build -t node-image .
+
+cd /usr/src/app/frontend
+docker build -t dock-image .
+
+
+
+
+
 # Overview
 This repository contains a React frontend, and an Express backend that the frontend connects to.
 
