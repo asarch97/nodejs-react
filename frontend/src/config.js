@@ -1,2 +1,2 @@
-export const API_URL = 'http://ec2-52-90-251-91.compute-1.amazonaws.com:8080/'
+export const API_URL = 'http://nodelb-2016202280.us-east-1.elb.amazonaws.com'
 export default API_URL
