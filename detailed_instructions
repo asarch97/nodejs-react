@@ -1,4 +1,13 @@
 
+The building and testing process was run on EC2
+
+sudo su
+cd /
+mkdir -p usr/src/app
+chown -R ubuntu /usr/src/app
+
+download a zip from github, extract and copy files.
+
 
 install docker
 ---------------
@@ -74,10 +83,8 @@ uri of the repository
 
 
 login
-
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 
-
-880651758906.dkr.ecr.us-east-1.amazonaws.com
+------
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 880651758906.dkr.ecr.us-east-1.amazonaws.com
 
 
 tag and push the images
