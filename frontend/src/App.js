@@ -21,7 +21,7 @@ function App() {
 
   return (
     <div className="App">
-      {!failureMessage && !successMessage ? 'Fetching...' : null}
+      {!failureMessage && !successMessage ? 'Fetching...proof of CICD at work' : null}
       {failureMessage ? failureMessage : null}
       {successMessage ? successMessage : null}
     </div>
