@@ -349,3 +349,131 @@ http://reactlb-2088109173.us-east-1.elb.amazonaws.com
 
 
 
+CI/CD for the react component
+-----------------------------
+code pipeline
+
+find the code pipeline service from the services menu
+
+create pipeline
+pipeline name: devpipe
+service role: new service role
+role name: AWSCodePipelineServiceRole-us-east-1-devpipe
+Allow AWS CodePipeline to create a service role so it can be used with this new pipeline - checked
+
+expand advanced settings
+artifact store - default location is selected - will go to a default s3
+encryption key: default aws managed key is selected
+source provider: github (version 2)
+create a connection
+
+connection name: cn-devpipe
+connect to github
+Authorize AWS Connector for GitHub.
+install a new app
+Install on your personal account asarch97 
+only select repositories
+select  asarch97/devops-code-challenge 
+thsese permissions are selected automatically:
+Read access to issues and metadata
+Read and write access to administration, code, and pull requests 
+install
+a new app - 31038390 is created and populated
+connect
+
+the connection: arn:aws:codestar-connections:us-east-1:880651758906:connection/f27ff34b-d49c-4
+repository name: select asarch97/devops-code-challenge
+branch: main
+change detection option: Start the pipeline on source code change is selected
+output artifact format: codepipeline default is selected
+build provider: aws codebuild
+region - leave default
+project name: needs to be a codebuild project
+create project
+
+project name: build-devpipe
+Restrict number of concurrent builds this project can start: not checked
+environment image: managed image
+operating system: ubuntu
+runtime: standard
+image: aws/codebuild/standard:6.0
+image version: always use the latest image for this runtime version
+environment type: linux
+privileged: checked
+service role: new service role
+role name: buildrole
+did not do anything in the additional configuration
+build specifications: use a buildspec file
+did not define batch configuration
+continue to code pipeline
+
+code pipeline build-devpipe is now populated
+build type: single build
+deploy provider: amazon ECS
+region: leave default
+cluster name: ecs-clust
+service name: reactdock
+create
+
+
+/usr/src/app/frontend/buildspec.yml
+-----------------------------------
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 
+
+880651758906.dkr.ecr.us-east-1.amazonaws.com
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...          
+      - docker build -t dock-image .
+      - docker tag dock-image 880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push 880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo
+      - printf '[{"name":"cont1","imageUri":"%s"}]' 880651758906.dkr.ecr.us-east-1.amazonaws.com/docker-repo:latest > imagedefinitions.json
+artifacts:
+    files: imagedefinitions.json
+
+
+
+The buildspec file in not in root directory, need to specify the location
+
+Developer Tools -> CodeBuild -> Build projects -> build-devpipe
+
+edit
+Edit Buildspec
+buildspec name: frontend/buildspec.yml
+update buildspec
+
+
+add permissions on role buildrole
+AmazonEC2ContainerRegistryPowerUser
+
+Make another copy of Dockerfile in the root directory since the code pipeline looks for it there.
+
+Dockerfile
+-------------------
+FROM node:16-alpine AS frontend-build
+WORKDIR /usr/src/app/frontend
+COPY ./frontend/package*.json ./
+COPY ./frontend/public/ ./public
+COPY ./frontend/src/ ./src
+RUN npm install && npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]
+
+
+Once the build and deployment completes, try the following url:
+
+http://reactlb-2088109173.us-east-1.elb.amazonaws.com
+
+
