@@ -16,8 +16,6 @@ See the detailed_instructions for the complete set of steps.
 CI/CD
 
 I have put things in place for CI/CD on the react component. Built my code pipeline, put in buildspec.yml in frontend, Dockerfile at the root level. 
-Made one simple change to frontend/src/App.js - the fetching message that appears at the beginning.
+Made one simple change to frontend/src/App.js - the fetching message that appears at the beginning. It goes by so quick that its hard to see, but it is there. You can make another change that is more visible. The build and deploy process is taking about 10 to 15 minutes.
 
-I have not yet provided the details for this step in the detailed_instructions. Waiting to make sure it works completely before doing that.
-
-Right now I have reached the limit on pull requests for Alpine. Waiting for the timeout. 
+ 
