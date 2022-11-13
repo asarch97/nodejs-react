@@ -22,5 +22,5 @@ app.get(/.*/, (req, res) => {
 })
 
 app.listen(PORT, () => {
-    console.log(`Backend started on ${PORT}. ctrl+c to exit`)
+    console.log(`Backend started on ${PORT}. ctrl+c to exit. Make a change for cicd test.`)
 })
